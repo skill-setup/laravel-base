@@ -26,5 +26,6 @@ RUN rm Dockerfile
 RUN composer install
 
 RUN chown -R www-data.www-data *
+RUN chown -R www-data.www-data .*
 
 ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
