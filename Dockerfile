@@ -28,7 +28,7 @@ RUN composer install
 RUN npm install
 RUN npm run build
 
-RUN chown -R www-data.www-data *
-RUN chown -R www-data.www-data .*
+RUN chown -R www-data:www-data *
+RUN chown -R www-data:www-data .*
 
 ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
