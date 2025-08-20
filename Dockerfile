@@ -1,34 +1,57 @@
 FROM php:8.4-apache
 
-RUN apt-get update -y && apt-get install -y openssl zip unzip zlib1g-dev libpq-dev libicu-dev libzip-dev curl libpng-dev nano git cron inetutils-ping
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin/ --filename=composer
-RUN docker-php-ext-install pdo pdo_pgsql pdo_mysql zip gd exif
+# Install system dependencies and Node.js in a single layer
+RUN apt-get update -y && apt-get install -y \
+    openssl \
+    zip \
+    unzip \
+    zlib1g-dev \
+    libpq-dev \
+    libicu-dev \
+    libzip-dev \
+    curl \
+    libpng-dev \
+    nano \
+    git \
+    cron \
+    inetutils-ping \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin/ --filename=composer \
+    && docker-php-ext-install pdo pdo_pgsql pdo_mysql zip gd exif \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-RUN apt-get update -y
-RUN apt install nodejs -y
-
+# Configure Apache
 COPY httpd-vhosts.conf /etc/apache2/sites-available/000-default.conf
 RUN a2enmod rewrite
 
-RUN echo "max_execution_time = 1200" > /usr/local/etc/php/conf.d/execution.ini
-RUN echo "memory_limit = 2048M" >> /usr/local/etc/php/conf.d/execution.ini
-RUN echo "post_max_size = 100M" >> /usr/local/etc/php/conf.d/execution.ini
-RUN echo "upload_max_filesize = 100M" >> /usr/local/etc/php/conf.d/execution.ini
+# Configure PHP settings in a single layer
+RUN echo "max_execution_time = 1200" > /usr/local/etc/php/conf.d/execution.ini \
+    && echo "memory_limit = 2048M" >> /usr/local/etc/php/conf.d/execution.ini \
+    && echo "post_max_size = 100M" >> /usr/local/etc/php/conf.d/execution.ini \
+    && echo "upload_max_filesize = 100M" >> /usr/local/etc/php/conf.d/execution.ini
 
 WORKDIR /var/www/html/
 
-COPY . /var/www/html/ 
+# Copy composer files first for better layer caching
+COPY composer.json composer.lock* ./
+RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-scripts
 
-RUN rm -r .git
-RUN rm Dockerfile
+# Copy package files for Node.js dependencies
+COPY package.json package-lock.json* ./
+RUN npm ci
 
-RUN composer install
+# Copy application code
+COPY . .
 
-RUN npm install
-RUN npm run build
+# Build assets
+RUN ls -la node_modules/.bin/ && \
+    npm run build \
+    && npm prune --production \
+    && npm cache clean --force
 
-RUN chown -R www-data:www-data *
-RUN chown -R www-data:www-data .*
+# Set proper permissions
+RUN chown -R www-data:www-data /var/www/html
 
 ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
