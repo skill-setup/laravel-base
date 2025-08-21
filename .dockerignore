@@ -6,9 +6,6 @@ yarn-error.log
 
 # Laravel specific
 /vendor
-.env
-.env.*
-!.env.example
 /storage/*.key
 /storage/logs/*
 /storage/framework/cache/*
