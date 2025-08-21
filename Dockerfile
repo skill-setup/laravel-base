@@ -53,5 +53,6 @@ RUN ls -la node_modules/.bin/ && \
 
 # Set proper permissions
 RUN chown -R www-data:www-data /var/www/html
+ENV APP_ENV=production
 
 ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
