@@ -19,9 +19,13 @@ RUN ls -la node_modules/.bin/ && \
     && npm prune --production \
     && npm cache clean --force
 
-RUN chown -R www-data:www-data /var/www/html/storage/ /var/www/html/bootstrap
+RUN touch database/database.sqlite
+RUN chown -R www-data:www-data /var/www/html/storage/ /var/www/html/bootstrap /var/www/html/database
 
 # Set proper permissions
 ENV APP_ENV=production
+
+RUN php artisan key:generate
+RUN php artisan migrate --force
 
 ENTRYPOINT ["/usr/sbin/apache2ctl", "-D", "FOREGROUND"]
