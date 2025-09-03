@@ -14,12 +14,32 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    
+    - name: Determine build type and dockerfile
+      id: build-config
+      run: |
+        REPO_NAME="${{ github.repository }}"
+        echo "Checking repository: $REPO_NAME"
+        
+        # Check if this is your template repository
+        if [[ "$REPO_NAME" == "frameworks/laravel" ]]; then
+          echo "dockerfile=Dockerfile.base" >> $GITHUB_OUTPUT
+          echo "tag-suffix=-base" >> $GITHUB_OUTPUT
+          echo "build-type=base" >> $GITHUB_OUTPUT
+        else
+          echo "dockerfile=Dockerfile" >> $GITHUB_OUTPUT
+          echo "tag-suffix=" >> $GITHUB_OUTPUT
+          echo "build-type=production" >> $GITHUB_OUTPUT
+        fi
+        
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag git.local.skill17.com/${{ github.repository }}:latest
+      
     - name: docker login
       env:
         USER: ${{ secrets.USER }}
         PASS: ${{ secrets.PASS }}
       run: docker login -u $USER -p $PASS git.local.skill17.com
+      
     - name: push to docker hub
       run: docker push git.local.skill17.com/${{ github.repository }}:latest
